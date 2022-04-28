@@ -136,47 +136,20 @@ Please reset the board.
 
 Quit Arduino IDE if active.
 
-First, to add a new upload method in the STM32F1 boards, you need to modify the "boards.txt" usally located in your Arduino installation directory at "Arduino\hardware\Arduino_STM32\STM32F1". Make a backup copy before editing the file : 
+First, to add a new upload method in the STM32F1 boards, you need to modify the "boards.txt" usally located in your Arduino installation directory at "packages\STMicroelectronics\hardware\stm32\2.2.0". Make a backup copy before editing the file : 
 
-Search the section "## Generic STM32F103C ##" in the board.txt file, then the sub section "#-- UPLOAD METHODS --", and add the following lines at the last part of the upload section, to create a new "TKG-HID" upload method that will be shown in the IDE menu :
+Search the section "## Generic F1 ##" in the board.txt file, then the sub section "#-- UPLOAD METHODS --", and add the following lines at the last part of the upload section, to create a new "TKG-HID" upload method that will be shown in the IDE menu :
 ``````
-genericSTM32F103C.menu.upload_method.TKG-HIDUploadMethod=TKG HID bootloader 3.1
-genericSTM32F103C.menu.upload_method.TKG-HIDUploadMethod.upload.tool=tkg_hid_upload
-genericSTM32F103C.menu.upload_method.TKG-HIDUploadMethod.build.upload_flags=-DSERIAL_USB -DGENERIC_BOOTLOADER
-genericSTM32F103C.menu.upload_method.TKG-HIDUploadMethod.build.vect=VECT_TAB_ADDR=0x8001000
-genericSTM32F103C.menu.upload_method.TKG-HIDUploadMethod.build.ldscript=ld/tkg_hid_bootloader.ld
+GenF1.menu.upload_method.TKG-HIDUploadMethod=TKG HID bootloader 3.1
+GenF1.menu.upload_method.TKG-HIDUploadMethod.upload.protocol=tkg31
+GenF1.menu.upload_method.TKG-HIDUploadMethod.upload.tool=tkg_hid_upload
+GenF1.menu.upload_method.TKG-HIDUploadMethod.build.upload_flags=-DSERIAL_USB -DGENERIC_BOOTLOADER
+GenF1.menu.upload_method.TKG-HIDUploadMethod.build.flash_offset=0x1000
+GenF1.menu.upload_method.TKG-HIDUploadMethod.build.bootloader_flags=-DVECT_TAB_OFFSET={build.flash_offset}
 ``````
 Save and close boards.txt file.
 
-Create now a new linker script file for your board, as mentioned in the above upload method, named "tkg_hid_bootloader.ld" in the directory STM32F1/variants/generic_stm32f103c/ld/ , and copy paste the following content :
-``````
-/*
- * TKG-HID FLASH BUILD LINKER SCRIPT - V3.1
- * STM32F103C8 / STM32F103CB
- */
-MEMORY
-{
-  /* Real RAM size of the board */
-  ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
-  /* Flash RAM size of the board minus 4K */
-  rom (rx)  : ORIGIN = 0x08001000, LENGTH = 124K
-}
-
-/* Provide memory region aliases for common.inc */
-REGION_ALIAS("REGION_TEXT", rom);
-REGION_ALIAS("REGION_DATA", ram);
-REGION_ALIAS("REGION_BSS", ram);
-REGION_ALIAS("REGION_RODATA", rom);
-
-/* Let common.inc handle the real work. */
-INCLUDE common.inc
-``````
-
-The ram and rom origin and lengths are adjusted to match the uC/board specifications.   
-- Ram origin starts at 0x20000000. The length is the RAM size of your MCU (20K for the STM32103C8/CB).   
-- Program origin in rom starts at 0x08000000 + TKG bootloader size (4K = 0x1000). The LENGTH is the flash memory size of the MCU minus 4k (bootloader size). 
-
-You must then add a new upload method in Arduino/hardware/Arduino_STM32/STM32F1/platform.txt (make a backup copy before editing the file) in the "# Uploader tools
+You must then add a new upload method in packages\STMicroelectronics\hardware\stm32\2.2.0\platform.txt (make a backup copy before editing the file) in the "# Uploader tools
 #" section :
 
 ``````
@@ -184,10 +157,10 @@ You must then add a new upload method in Arduino/hardware/Arduino_STM32/STM32F1/
 tools.tkg_hid_upload.cmd=tkg-flash
 tools.tkg_hid_upload.cmd.windows=tkg-flash.exe
 tools.tkg_hid_upload.cmd.macosx=tkg-flash
-tools.tkg_hid_upload.path={runtime.hardware.path}/tools/win
-tools.tkg_hid_upload.path.macosx={runtime.hardware.path}/tools/macosx
-tools.tkg_hid_upload.path.linux={runtime.hardware.path}/tools/linux
-tools.tkg_hid_upload.path.linux64={runtime.hardware.path}/tools/linux64
+tools.tkg_hid_upload.path={runtime.tools.STM32Tools.path}/win
+tools.tkg_hid_upload.path.macosx={runtime.tools.STM32Tools.path}/macosx
+tools.tkg_hid_upload.path.linux={runtime.tools.STM32Tools.path}/linux
+# tools.tkg_hid_upload.path.linux64={runtime.tools.STM32Tools.path}/linux64
 tools.tkg_hid_upload.upload.params.verbose=-d
 tools.tkg_hid_upload.upload.params.quiet=n
 tools.tkg_hid_upload.upload.pattern="{path}/{cmd}" "{build.path}/{build.project_name}.bin" -p={serial.port.file} -w=15 -ide
