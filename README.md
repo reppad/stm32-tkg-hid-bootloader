@@ -165,7 +165,7 @@ tools.tkg_hid_upload.upload.params.verbose=-d
 tools.tkg_hid_upload.upload.params.quiet=n
 tools.tkg_hid_upload.upload.pattern="{path}/{cmd}" "{build.path}/{build.project_name}.bin" -p={serial.port.file} -w=15 -ide
 ``````
-and copy the tkg-flash tool in the packages\STMicroelectronics\tools\STM32Tools\2.1.1\(your platform).   
+and copy the tkg-flash tool in the packages\STMicroelectronics\tools\STM32Tools\2.1.1\\(your platform).   
 
 Under Linux, and Mac-OSX, you probaly need to :
 - chown +x the tkg-flash binary
