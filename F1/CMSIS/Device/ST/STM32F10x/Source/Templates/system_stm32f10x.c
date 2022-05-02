@@ -118,7 +118,8 @@
 /* #define SYSCLK_FREQ_36MHz  36000000 */
 /* #define SYSCLK_FREQ_48MHz  48000000 */
 /* #define SYSCLK_FREQ_56MHz  56000000 */
-#define SYSCLK_FREQ_72MHz  72000000
+/* #define SYSCLK_FREQ_72MHz  72000000 */
+#define SYSCLK_FREQ_48MHz_FROM_HSI  48000000
 #endif
 
 /*!< Uncomment the following line if you need to use external SRAM mounted
@@ -166,6 +167,8 @@
   uint32_t SystemCoreClock         = SYSCLK_FREQ_56MHz;        /*!< System Clock Frequency (Core Clock) */
 #elif defined SYSCLK_FREQ_72MHz
   uint32_t SystemCoreClock         = SYSCLK_FREQ_72MHz;        /*!< System Clock Frequency (Core Clock) */
+#elif defined SYSCLK_FREQ_48MHz_FROM_HSI
+  uint32_t SystemCoreClock         = SYSCLK_FREQ_48MHz_FROM_HSI;        /*!< System Clock Frequency (Core Clock) */
 #else /*!< HSI Selected as System Clock source */
   uint32_t SystemCoreClock         = HSI_VALUE;        /*!< System Clock Frequency (Core Clock) */
 #endif
@@ -193,6 +196,8 @@ static void SetSysClock(void);
   static void SetSysClockTo56(void);  
 #elif defined SYSCLK_FREQ_72MHz
   static void SetSysClockTo72(void);
+#elif defined SYSCLK_FREQ_48MHz_FROM_HSI
+  static void SetSysClockTo48HSI(void);
 #endif
 
 #ifdef DATA_IN_ExtSRAM
@@ -436,6 +441,8 @@ static void SetSysClock(void)
   SetSysClockTo56();  
 #elif defined SYSCLK_FREQ_72MHz
   SetSysClockTo72();
+#elif defined SYSCLK_FREQ_48MHz_FROM_HSI
+  SetSysClockTo48HSI();
 #endif
  
  /* If none of the define above is enabled, the HSI is used as System clock
@@ -1082,6 +1089,83 @@ static void SetSysClockTo72(void)
   else
   { /* If HSE fails to start-up, the application will have wrong clock 
          configuration. User can add here some code to deal with this error */
+  }
+}
+
+#elif defined SYSCLK_FREQ_48MHz_FROM_HSI
+/**
+  * @brief  Sets System clock frequency to 48MHz from HSI and configure HCLK, PCLK2 
+  *         and PCLK1 prescalers. 
+  * @note   This function should be used only after reset.
+  * @param  None
+  * @retval None
+  */
+static void SetSysClockTo48HSI(void)
+{
+  __IO uint32_t StartUpCounter = 0, HSEStatus = 0;
+  
+  /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration ---------------------------*/    
+  /* Enable HSI */    
+  RCC->CR |= ((uint32_t)RCC_CR_HSION);
+ 
+  /* Wait till HSI is ready (not sure it's useful...) */
+  do
+  {
+    HSIStatus = RCC->CR & RCC_CR_HSIRDY;
+  } while((HSIStatus == 0));
+
+  if ((RCC->CR & RCC_CR_HSIRDY) != RESET)
+  {
+    HSIStatus = (uint32_t)0x01;
+  }
+  else
+  {
+    HSIStatus = (uint32_t)0x00;
+  }  
+
+  if (HSIStatus == (uint32_t)0x01)
+  {
+    /* Enable Prefetch Buffer */
+    FLASH->ACR |= FLASH_ACR_PRFTBE;
+
+    /* Flash 2 wait state */
+    FLASH->ACR &= (uint32_t)((uint32_t)~FLASH_ACR_LATENCY);
+    FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_2;    
+
+ 
+    /* HCLK = SYSCLK */
+    RCC->CFGR |= (uint32_t)RCC_CFGR_HPRE_DIV1;
+      
+    /* PCLK2 = HCLK */
+    RCC->CFGR |= (uint32_t)RCC_CFGR_PPRE2_DIV1;
+    
+    /* PCLK1 = HCLK */
+    RCC->CFGR |= (uint32_t)RCC_CFGR_PPRE1_DIV2;
+  
+    /*  PLL configuration: PLLCLK = (HSI / 2) * 12 = 48 MHz */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLXTPRE |
+                                        RCC_CFGR_PLLMULL));
+    RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC_HSI_Div2 | RCC_CFGR_PLLMULL12);
+
+    /* USB Device prescaler to 1 (default = 1.5) */
+    RCC->CFGR |= (uint32_t)(0x1UL << 22U);
+
+    /* Enable PLL */
+    RCC->CR |= RCC_CR_PLLON;
+
+    /* Wait till PLL is ready */
+    while((RCC->CR & RCC_CR_PLLRDY) == 0)
+    {
+    }
+    
+    /* Select PLL as system clock source */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+    RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;    
+
+    /* Wait till PLL is used as system clock source */
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
+    {
+    }
   }
 }
 #endif
